@@ -30,6 +30,14 @@ import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.gson.JsonArray;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class LoginActivity extends AppCompatActivity implements OnConnectionFailedListener {
     // 구글로그인 result 상수
@@ -41,11 +49,15 @@ public class LoginActivity extends AppCompatActivity implements OnConnectionFail
     // 구글api클라이언트
     private GoogleApiClient mGoogleApiClient;
     private ProgressDialog mProgressDialog;
+    private RetrofitBuilder.PingPongService mPingPongService;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
+
+        RetrofitBuilder retrofitBuilder = new RetrofitBuilder();
+        mPingPongService = retrofitBuilder.getService();
 
         signInButton = findViewById(R.id.btn_googleSignIn);
         signInButton.setSize(SignInButton.SIZE_STANDARD);
@@ -118,12 +130,36 @@ public class LoginActivity extends AppCompatActivity implements OnConnectionFail
                 String personEmail = account.getEmail();
                 String personId = account.getId();
                 String personIdToken = account.getIdToken();
+                JSONObject personData = new JSONObject();
+                personData.put("email", personEmail);
+                personData.put("token", personIdToken);
 
                 Log.i("GoogleLogin", "personName=" + personName);
                 Log.i("GoogleLogin", "personEmail=" + personEmail);
                 Log.i("GoogleLogin", "personId=" + personId);
                 Log.i("GoogleLogin", "personIdToken=" + personIdToken);
+
+                Call<JsonArray> request = mPingPongService.signin(personData);
+
+                request.enqueue(new Callback<JsonArray>() {
+                    @Override
+                    public void onResponse(Call<JsonArray> call, Response<JsonArray> response) {
+                        // 레알 성공
+                        Toast.makeText(getApplicationContext(), response.toString(), Toast.LENGTH_LONG).show();
+                        Log.d("Success", response.body().toString());
+                    }
+
+                    @Override
+                    public void onFailure(Call<JsonArray> call, Throwable t) {
+                        // 구글은 성공햇지만 서버에서 실패
+                        Log.e("Fail", t.toString());
+                        Toast.makeText(getApplicationContext(), "Fail", Toast.LENGTH_LONG).show();
+                        // Code...
+                    }
+                });
             } catch (ApiException e) {
+                e.printStackTrace();
+            } catch (JSONException e) {
                 e.printStackTrace();
             }
         }
